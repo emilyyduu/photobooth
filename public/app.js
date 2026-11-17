@@ -94,8 +94,7 @@ function renderGrid() {
     card.className = 'card';
     card.innerHTML = `<img alt=""><span></span>`;
     card.querySelector('img').src = t.img.src;
-    card.querySelector('span').textContent =
-      `${t.name} · ${t.slots.length} photo${t.slots.length === 1 ? '' : 's'}`;
+    card.querySelector('span').textContent = t.name;
     card.onclick = () => startBooth(t);
 
     if (t.uploaded) {
@@ -120,7 +119,7 @@ async function renderGallery() {
   const gallery = $('gallery');
   gallery.querySelectorAll('img').forEach((img) => URL.revokeObjectURL(img.src));
   gallery.innerHTML = '';
-  $('galleryEmpty').hidden = photos.length > 0;
+  $('gallery-section').hidden = photos.length === 0;
 
   for (const p of photos) {
     const img = document.createElement('img');
@@ -222,7 +221,7 @@ async function startBooth(t) {
   try {
     await startCamera();
   } catch (err) {
-    $('status').textContent = 'Camera blocked. Allow camera access in your browser settings and reload.';
+    $('status').textContent = 'Camera access is blocked. Allow it in your browser settings.';
     $('shoot').disabled = true;
   }
 }
@@ -236,12 +235,8 @@ function setPhase(phase) {
   $('retakeAll').hidden = phase !== 'review';
   [$('shoot'), $('print'), $('retakeAll'), $('backFromBooth')].forEach((b) => (b.disabled = shooting));
   $('strip').classList.toggle('reviewing', phase === 'review');
-  if (phase === 'ready') {
-    $('status').textContent = `${n} photo${n === 1 ? '' : 's'}, tap start when you're ready`;
-  }
-  if (phase === 'review') {
-    $('status').textContent = 'tap a photo to retake it, or print when you love them all';
-  }
+  if (phase === 'ready') $('status').textContent = '';
+  if (phase === 'review') $('status').textContent = 'Tap a photo to retake it';
 }
 
 // Shape the live preview like the slot it's filling, so what you see is what you get
@@ -285,7 +280,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function takeShot(i) {
   setPreviewShape(i);
   markActive(i);
-  $('status').textContent = `photo ${i + 1} of ${current.slots.length}`;
+  $('status').textContent = `${i + 1} / ${current.slots.length}`;
   for (let n = countdownSeconds; n > 0; n--) {
     $('count').textContent = n;
     await wait(1000);
@@ -379,17 +374,14 @@ function showResult(blob, id, fresh) {
   printer.classList.remove('printing');
   collect.classList.remove('ready', 'hiding');
   $('retake').hidden = !fresh;
+  $('deletePhoto').hidden = fresh;
 
   const done = () => {
-    $('resultTitle').textContent = 'CUTE!';
-    $('resultSub').textContent = fresh ? 'fresh out of the booth' : 'from your photos';
     collect.classList.remove('hiding');
     collect.classList.add('ready');
   };
 
   if (fresh) {
-    $('resultTitle').textContent = 'PRINTING...';
-    $('resultSub').textContent = 'hold tight';
     collect.classList.add('hiding');
     out.onload = () => {
       void printer.offsetWidth;
@@ -428,7 +420,7 @@ $('save').onclick = async () => {
 };
 
 $('deletePhoto').onclick = async () => {
-  if (!confirm('Delete this photo from the gallery?')) return;
+  if (!confirm('Delete this photo?')) return;
   await dbDelete('photos', viewingId);
   goHome();
 };

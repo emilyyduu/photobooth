@@ -7,6 +7,8 @@
   src: url("fonts/oskon.woff2") format("woff2"),
        url("fonts/oskon.otf") format("opentype"),
        url("fonts/oskon.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
   font-display: swap;
 }
 
@@ -54,7 +56,7 @@ body::after {
 /* ---------- Type ---------- */
 h1, h2 {
   font-family: var(--heading);
-  font-weight: 700;
+  font-weight: normal;
   line-height: 0.95;
   letter-spacing: 0.01em;
 }
@@ -65,26 +67,6 @@ h1 {
 h2 {
   color: var(--periwinkle);
   font-size: clamp(1.9rem, 5vw, 3rem);
-}
-.sub {
-  font-size: clamp(0.95rem, 2.2vw, 1.1rem);
-  font-weight: 500;
-  color: var(--periwinkle);
-  margin-top: 8px;
-  text-align: center;
-}
-.hint {
-  font-size: 0.8rem;
-  color: var(--periwinkle);
-  opacity: 0.75;
-  text-align: center;
-}
-.label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--coral);
 }
 
 /* ---------- Top bar ---------- */
@@ -130,20 +112,21 @@ h2 {
   align-items: center;
   gap: 14px;
   text-align: center;
-  padding: 64px 20px 88px;
+  --stripe: 56px; /* width of one stripe, and of one scallop */
+  padding: 72px 20px calc(72px + var(--stripe) / 2);
   background: repeating-linear-gradient(90deg,
-    var(--yellow) 0 40px, var(--yellow-light) 40px 80px);
-}
-/* Scalloped bottom edge */
-.hero::after {
-  content: "";
-  position: absolute;
-  left: 0; right: 0;
-  bottom: -26px;
-  height: 60px;
-  background:
-    radial-gradient(circle at 30px 34px, var(--yellow) 26px, transparent 27px) 0 0 / 60px 60px repeat-x,
-    linear-gradient(var(--yellow), var(--yellow)) 0 0 / 100% 34px no-repeat;
+    var(--yellow) 0 var(--stripe), var(--yellow-light) var(--stripe) calc(var(--stripe) * 2));
+
+  /* Scalloped bottom edge: the stripes run all the way down and each one
+     ends in its own half circle, like an awning */
+  -webkit-mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - var(--stripe) / 2) no-repeat,
+    radial-gradient(circle calc(var(--stripe) / 2) at 50% 0, #000 97%, transparent 100%)
+      left bottom / var(--stripe) calc(var(--stripe) / 2) repeat-x;
+  mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - var(--stripe) / 2) no-repeat,
+    radial-gradient(circle calc(var(--stripe) / 2) at 50% 0, #000 97%, transparent 100%)
+      left bottom / var(--stripe) calc(var(--stripe) / 2) repeat-x;
 }
 .star {
   position: absolute;
@@ -156,22 +139,6 @@ h2 {
   stroke-linejoin: round;
   transform: rotate(12deg);
 }
-.eyebrow {
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--coral);
-  background: var(--blush);
-  border: var(--border) solid var(--coral);
-  border-radius: 999px;
-  padding: 6px 16px;
-}
-.tagline {
-  font-size: clamp(1rem, 2.4vw, 1.25rem);
-  font-weight: 500;
-  color: var(--coral);
-}
 
 /* ---------- Main content ---------- */
 main.cream {
@@ -179,10 +146,26 @@ main.cream {
   flex-direction: column;
   align-items: center;
   gap: 24px;
-  padding: 80px 20px max(48px, env(safe-area-inset-bottom));
+  padding: 48px 20px max(48px, env(safe-area-inset-bottom));
 }
 .section-head { text-align: center; }
-#gallery-section { margin-top: 48px; }
+main.cream > h2 + .grid { margin-top: -4px; }
+.gallery-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  margin-top: 40px;
+}
+.gallery-section[hidden] { display: none; }
+.status {
+  min-height: 1.2em;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--periwinkle);
+}
 
 /* ---------- Template cards ---------- */
 .grid {
@@ -228,12 +211,21 @@ main.cream {
   border: var(--border) solid var(--coral);
   background: var(--blush);
   color: var(--coral);
-  font-family: var(--body);
-  font-weight: 700;
-  font-size: 15px;
-  line-height: 1;
+  padding: 0;
+  font-size: 0;
   cursor: pointer;
 }
+.remove::before,
+.remove::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 12px; height: 2px;
+  background: var(--coral);
+  border-radius: 1px;
+}
+.remove::before { transform: translate(-50%, -50%) rotate(45deg); }
+.remove::after { transform: translate(-50%, -50%) rotate(-45deg); }
 
 /* ---------- Gallery ---------- */
 .gallery {
@@ -294,7 +286,7 @@ main.cream {
   position: absolute; inset: 0;
   display: grid; place-items: center;
   font-family: var(--heading);
-  font-weight: 700;
+  font-weight: normal;
   font-size: 9rem;
   color: var(--cream);
   -webkit-text-stroke: 3px var(--coral);
@@ -310,15 +302,9 @@ main.cream {
 @keyframes flash { from { opacity: 1; } to { opacity: 0; } }
 
 /* Side strip of shots */
-.strip-wrap {
-  width: 160px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
 .strip {
-  width: 100%;
+  width: 150px;
+  flex-shrink: 0;
   background: var(--blush);
   border: var(--border) solid var(--coral);
   border-radius: var(--radius);
@@ -335,7 +321,7 @@ main.cream {
   display: grid;
   place-items: center;
   font-family: var(--heading);
-  font-weight: 700;
+  font-weight: normal;
   color: var(--coral);
   font-size: 1.6rem;
   overflow: hidden;
@@ -367,8 +353,7 @@ main.cream {
   .card { width: calc(50% - 8px); }
   .gallery img { width: calc(33.33% - 11px); }
   .booth-layout { flex-direction: column; align-items: center; }
-  .strip-wrap { width: 100%; }
-  .strip { flex-direction: row; overflow-x: auto; }
+  .strip { width: 100%; flex-direction: row; overflow-x: auto; }
   .shot { flex: 0 0 72px; width: 72px; }
 }
 
@@ -401,7 +386,7 @@ main.cream {
   position: absolute;
   top: 14px; right: 22px;
   font-family: var(--heading);
-  font-weight: 700;
+  font-weight: normal;
   font-size: 1.1rem;
   letter-spacing: 0.04em;
   color: var(--ice);
