@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Photobooth</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- 1. Pick a template -->
+  <section id="pick" class="screen active">
+    <header class="top">
+      <h1>Photobooth</h1>
+      <label class="btn small">
+        + Add template
+        <input id="upload" type="file" accept="image/png" multiple hidden>
+      </label>
+    </header>
+    <div id="grid" class="grid"></div>
+    <p class="hint">Templates are PNGs with transparent gaps where the photos go.</p>
+  </section>
+
+  <!-- 2. Take photos -->
+  <section id="booth" class="screen">
+    <div id="frame" class="frame">
+      <video id="video" autoplay playsinline muted></video>
+      <div id="count" class="count"></div>
+      <div id="flash" class="flash"></div>
+    </div>
+    <p id="status" class="status"></p>
+    <div class="row">
+      <button id="backFromBooth" class="btn ghost">Back</button>
+      <button id="shoot" class="btn">Start</button>
+    </div>
+  </section>
+
+  <!-- 3. Result -->
+  <section id="result" class="screen">
+    <img id="output" class="output" alt="Your photobooth picture">
+    <div class="row">
+      <button id="retake" class="btn ghost">Retake</button>
+      <button id="save" class="btn">Save</button>
+    </div>
+    <button id="backFromResult" class="btn link">Choose another template</button>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
