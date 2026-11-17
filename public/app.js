@@ -49,13 +49,6 @@ document.querySelectorAll('[data-timer]').forEach((b) => {
 });
 renderTimer();
 
-document.querySelectorAll('[data-go]').forEach((btn) => {
-  btn.onclick = () => {
-    goHome();
-    if (btn.dataset.go !== 'pick') $(btn.dataset.go).scrollIntoView({ behavior: 'smooth' });
-  };
-});
-
 // ---------- Loading templates ----------
 function loadImage(src) {
   return new Promise((resolve, reject) => {
