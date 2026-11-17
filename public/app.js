@@ -1,5 +1,5 @@
 // ---------- Settings ----------
-const COUNTDOWN_SECONDS = 3;
+let countdownSeconds = 3;       // changed with the timer buttons in the top bar
 const PAUSE_BETWEEN_SHOTS = 800; // ms
 const MIRROR = true;             // selfie-style, like a real photobooth
 const OUTPUT_TYPE = 'image/jpeg';
@@ -11,6 +11,7 @@ let current = null;   // the chosen template
 let shots = [];       // captured canvases
 let stream = null;
 let resultBlob = null;
+let viewingId = null; // id of the gallery photo on the result screen
 let busy = false;
 
 const $ = (id) => document.getElementById(id);
@@ -21,7 +22,39 @@ if (MIRROR) video.classList.add('mirror');
 function show(id) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
   $(id).classList.add('active');
+  window.scrollTo(0, 0);
 }
+
+function goHome() {
+  if (busy) return;
+  stopCamera();
+  show('pick');
+  renderGallery();
+}
+
+// ---------- Timer setting ----------
+try { countdownSeconds = Number(localStorage.getItem('timer')) || 3; } catch (e) {}
+
+function renderTimer() {
+  document.querySelectorAll('[data-timer]').forEach((b) => {
+    b.classList.toggle('on', Number(b.dataset.timer) === countdownSeconds);
+  });
+}
+document.querySelectorAll('[data-timer]').forEach((b) => {
+  b.onclick = () => {
+    countdownSeconds = Number(b.dataset.timer);
+    try { localStorage.setItem('timer', countdownSeconds); } catch (e) {}
+    renderTimer();
+  };
+});
+renderTimer();
+
+document.querySelectorAll('[data-go]').forEach((btn) => {
+  btn.onclick = () => {
+    goHome();
+    if (btn.dataset.go !== 'pick') $(btn.dataset.go).scrollIntoView({ behavior: 'smooth' });
+  };
+});
 
 // ---------- Loading templates ----------
 function loadImage(src) {
@@ -47,8 +80,8 @@ async function loadTemplates() {
     console.warn('Could not load built-in templates', e);
   }
 
-  // Templates uploaded on this device (kept in IndexedDB)
-  for (const rec of await dbAll()) {
+  // Templates uploaded on this device
+  for (const rec of await dbAll('templates')) {
     const img = await loadImage(URL.createObjectURL(rec.blob));
     templates.push({ id: rec.id, name: rec.name, img, slots: detectSlots(img), uploaded: true });
   }
@@ -79,7 +112,7 @@ function renderGrid() {
       x.onclick = async (e) => {
         e.stopPropagation();
         if (!confirm(`Remove "${t.name}" from this device?`)) return;
-        await dbDelete(t.id);
+        await dbDelete('templates', t.id);
         loadTemplates();
       };
       card.appendChild(x);
@@ -88,12 +121,29 @@ function renderGrid() {
   }
 }
 
+// ---------- Gallery of past photos ----------
+async function renderGallery() {
+  const photos = (await dbAll('photos')).sort((a, b) => b.created - a.created);
+  const gallery = $('gallery');
+  gallery.querySelectorAll('img').forEach((img) => URL.revokeObjectURL(img.src));
+  gallery.innerHTML = '';
+  $('galleryEmpty').hidden = photos.length > 0;
+
+  for (const p of photos) {
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(p.blob);
+    img.alt = 'Saved photo';
+    img.onclick = () => showResult(p.blob, p.id, false);
+    gallery.appendChild(img);
+  }
+}
+
 // ---------- Finding the photo slots ----------
 // Scans the PNG for transparent areas and returns a box for each one,
 // ordered top-to-bottom, then left-to-right. So you never have to type coordinates.
 function detectSlots(img) {
   const W = img.naturalWidth, H = img.naturalHeight;
-  const scale = Math.min(1, 400 / Math.max(W, H)); // scan a small copy, it's much faster
+  const scale = Math.min(1, 1000 / Math.max(W, H)); // scan a smaller copy, it's much faster
   const w = Math.round(W * scale), h = Math.round(H * scale);
 
   const c = document.createElement('canvas');
@@ -104,7 +154,7 @@ function detectSlots(img) {
 
   const seen = new Uint8Array(w * h);
   const boxes = [];
-  const isClear = (i) => alpha[i * 4 + 3] < 30;
+  const isClear = (i) => alpha[i * 4 + 3] < 128;
 
   for (let start = 0; start < w * h; start++) {
     if (seen[start] || !isClear(start)) continue;
@@ -125,10 +175,14 @@ function detectSlots(img) {
     }
     // Ignore tiny specks (anti-aliasing, little transparent details)
     if (count > w * h * 0.01) {
-      boxes.push({
-        x: minX / scale, y: minY / scale,
-        w: (maxX - minX + 1) / scale, h: (maxY - minY + 1) / scale,
-      });
+      // Bleed: make the photo a bit bigger than the gap so it tucks under the
+      // template's edges. The template is drawn on top, so the extra is hidden.
+      const pad = Math.ceil(1 / scale) + 6;
+      const x1 = Math.max(0, minX / scale - pad);
+      const y1 = Math.max(0, minY / scale - pad);
+      const x2 = Math.min(W, (maxX + 1) / scale + pad);
+      const y2 = Math.min(H, (maxY + 1) / scale + pad);
+      boxes.push({ x: x1, y: y1, w: x2 - x1, h: y2 - y1 });
     }
   }
 
@@ -143,7 +197,7 @@ function detectSlots(img) {
 // ---------- Uploading templates ----------
 $('upload').onchange = async (e) => {
   for (const file of e.target.files) {
-    await dbPut({ id: 'up-' + Date.now() + '-' + file.name, name: prettyName(file.name), blob: file });
+    await dbPut('templates', { id: 'up-' + Date.now() + '-' + file.name, name: prettyName(file.name), blob: file });
   }
   e.target.value = '';
   loadTemplates();
@@ -170,13 +224,30 @@ async function startBooth(t) {
   shots = [];
   show('booth');
   setPreviewShape(0);
-  $('status').textContent = `${t.slots.length} photo${t.slots.length === 1 ? '' : 's'}. Tap Start when ready.`;
-  $('shoot').disabled = false;
+  renderStrip();
+  setPhase('ready');
   try {
     await startCamera();
   } catch (err) {
     $('status').textContent = 'Camera blocked. Allow camera access in your browser settings and reload.';
     $('shoot').disabled = true;
+  }
+}
+
+// ready: waiting to start / shooting: countdown running / review: all taken, tap one to retake
+function setPhase(phase) {
+  const n = current.slots.length;
+  const shooting = phase === 'shooting';
+  $('shoot').hidden = phase === 'review';
+  $('print').hidden = phase !== 'review';
+  $('retakeAll').hidden = phase !== 'review';
+  [$('shoot'), $('print'), $('retakeAll'), $('backFromBooth')].forEach((b) => (b.disabled = shooting));
+  $('strip').classList.toggle('reviewing', phase === 'review');
+  if (phase === 'ready') {
+    $('status').textContent = `${n} photo${n === 1 ? '' : 's'}, tap start when you're ready`;
+  }
+  if (phase === 'review') {
+    $('status').textContent = 'tap a photo to retake it, or print when you love them all';
   }
 }
 
@@ -186,33 +257,77 @@ function setPreviewShape(i) {
   $('frame').style.aspectRatio = `${s.w} / ${s.h}`;
 }
 
+// The side strip: one numbered placeholder per slot, filled in as you go
+function renderStrip() {
+  const strip = $('strip');
+  strip.innerHTML = '';
+  current.slots.forEach((s, i) => {
+    const box = document.createElement('div');
+    box.className = 'shot';
+    box.style.aspectRatio = `${s.w} / ${s.h}`;
+    box.textContent = i + 1;
+    box.onclick = () => retakeOne(i);
+    strip.appendChild(box);
+  });
+}
+
+function fillStrip(i, canvas) {
+  const box = $('strip').children[i];
+  const img = document.createElement('img');
+  img.src = canvas.toDataURL('image/jpeg', 0.6);
+  box.textContent = '';
+  box.appendChild(img);
+  box.classList.remove('filled');
+  void box.offsetWidth; // replay the pop animation
+  box.classList.add('filled');
+}
+
+function markActive(i) {
+  [...$('strip').children].forEach((b, j) => b.classList.toggle('active', j === i));
+}
+
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Countdown, then capture photo number i
+async function takeShot(i) {
+  setPreviewShape(i);
+  markActive(i);
+  $('status').textContent = `photo ${i + 1} of ${current.slots.length}`;
+  for (let n = countdownSeconds; n > 0; n--) {
+    $('count').textContent = n;
+    await wait(1000);
+  }
+  $('count').textContent = '';
+  const shot = captureFrame();
+  shots[i] = shot;
+  fillStrip(i, shot);
+  flash();
+  await wait(PAUSE_BETWEEN_SHOTS);
+  markActive(-1);
+}
 
 $('shoot').onclick = async () => {
   if (busy) return;
   busy = true;
-  $('shoot').disabled = true;
-  $('backFromBooth').disabled = true;
+  setPhase('shooting');
   shots = [];
-
-  for (let i = 0; i < current.slots.length; i++) {
-    setPreviewShape(i);
-    $('status').textContent = `Photo ${i + 1} of ${current.slots.length}`;
-    for (let n = COUNTDOWN_SECONDS; n > 0; n--) {
-      $('count').textContent = n;
-      await wait(1000);
-    }
-    $('count').textContent = '';
-    shots.push(captureFrame());
-    flash();
-    await wait(PAUSE_BETWEEN_SHOTS);
-  }
-
-  await makeResult();
+  renderStrip();
+  for (let i = 0; i < current.slots.length; i++) await takeShot(i);
   busy = false;
-  $('shoot').disabled = false;
-  $('backFromBooth').disabled = false;
+  setPhase('review');
 };
+
+async function retakeOne(i) {
+  if (busy || !$('strip').classList.contains('reviewing')) return;
+  busy = true;
+  setPhase('shooting');
+  await takeShot(i);
+  busy = false;
+  setPhase('review');
+}
+
+$('retakeAll').onclick = () => $('shoot').onclick();
+$('print').onclick = () => { if (!busy) makeResult(); };
 
 function flash() {
   const f = $('flash');
@@ -252,8 +367,49 @@ async function makeResult() {
   slots.forEach((s, i) => drawCover(ctx, shots[i], s));
   ctx.drawImage(img, 0, 0);
 
-  resultBlob = await new Promise((r) => c.toBlob(r, OUTPUT_TYPE, OUTPUT_QUALITY));
-  $('output').src = URL.createObjectURL(resultBlob);
+  const blob = await new Promise((r) => c.toBlob(r, OUTPUT_TYPE, OUTPUT_QUALITY));
+  const id = 'photo-' + Date.now();
+  await dbPut('photos', { id, blob, created: Date.now() }); // keep a copy in the gallery
+  stopCamera();
+  showResult(blob, id, true);
+}
+
+// fresh = just taken, so play the printing animation
+function showResult(blob, id, fresh) {
+  resultBlob = blob;
+  viewingId = id;
+  const out = $('output');
+  const printer = $('printer');
+  const collect = $('save');
+  if (out.src) URL.revokeObjectURL(out.src);
+
+  printer.classList.remove('printing');
+  collect.classList.remove('ready', 'hiding');
+  $('retake').hidden = !fresh;
+
+  const done = () => {
+    $('resultTitle').textContent = 'CUTE!';
+    $('resultSub').textContent = fresh ? 'fresh out of the booth' : 'from your photos';
+    collect.classList.remove('hiding');
+    collect.classList.add('ready');
+  };
+
+  if (fresh) {
+    $('resultTitle').textContent = 'PRINTING...';
+    $('resultSub').textContent = 'hold tight';
+    collect.classList.add('hiding');
+    out.onload = () => {
+      void printer.offsetWidth;
+      printer.classList.add('printing');
+    };
+    out.onanimationend = (e) => { if (e.animationName === 'print') done(); };
+  } else {
+    out.onload = null;
+    out.onanimationend = null;
+    done();
+  }
+
+  out.src = URL.createObjectURL(blob);
   show('result');
 }
 
@@ -262,7 +418,7 @@ async function makeResult() {
 // Anywhere share isn't available, it downloads the file instead.
 $('save').onclick = async () => {
   const ext = OUTPUT_TYPE === 'image/png' ? 'png' : 'jpg';
-  const file = new File([resultBlob], `photobooth-${Date.now()}.${ext}`, { type: OUTPUT_TYPE });
+  const file = new File([resultBlob], `photobooth-${Date.now()}.${ext}`, { type: resultBlob.type });
 
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
@@ -278,31 +434,42 @@ $('save').onclick = async () => {
   a.click();
 };
 
+$('deletePhoto').onclick = async () => {
+  if (!confirm('Delete this photo from the gallery?')) return;
+  await dbDelete('photos', viewingId);
+  goHome();
+};
+
 // ---------- Navigation ----------
 $('retake').onclick = () => startBooth(current);
-$('backFromBooth').onclick = () => { stopCamera(); show('pick'); };
-$('backFromResult').onclick = () => { stopCamera(); show('pick'); };
+$('backFromBooth').onclick = goHome;
+$('backFromResult').onclick = goHome;
 
-// ---------- Tiny IndexedDB helper (stores uploaded templates on this device) ----------
+// ---------- Tiny IndexedDB helper (templates + photos, stored on this device) ----------
 function openDb() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('photobooth', 1);
-    req.onupgradeneeded = () => req.result.createObjectStore('templates', { keyPath: 'id' });
+    const req = indexedDB.open('photobooth', 2);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('templates')) db.createObjectStore('templates', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('photos')) db.createObjectStore('photos', { keyPath: 'id' });
+    };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
 }
-async function dbTx(mode, fn) {
+async function dbTx(store, mode, fn) {
   const db = await openDb();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction('templates', mode);
-    const result = fn(tx.objectStore('templates'));
-    tx.oncomplete = () => resolve(result && result.result);
+    const tx = db.transaction(store, mode);
+    const request = fn(tx.objectStore(store));
+    tx.oncomplete = () => resolve(request && request.result);
     tx.onerror = () => reject(tx.error);
   });
 }
-const dbAll = () => dbTx('readonly', (s) => s.getAll()).then((r) => r || []);
-const dbPut = (rec) => dbTx('readwrite', (s) => s.put(rec));
-const dbDelete = (id) => dbTx('readwrite', (s) => s.delete(id));
+const dbAll = (store) => dbTx(store, 'readonly', (s) => s.getAll()).then((r) => r || []);
+const dbPut = (store, rec) => dbTx(store, 'readwrite', (s) => s.put(rec));
+const dbDelete = (store, id) => dbTx(store, 'readwrite', (s) => s.delete(id));
 
 loadTemplates();
+renderGallery();

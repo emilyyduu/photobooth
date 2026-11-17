@@ -4,47 +4,106 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#7b8fbb">
   <title>Photobooth</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Gloock&family=Instrument+Serif:ital@0;1&family=Montserrat:wght@500;600;700&family=Yellowtail&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- 1. Pick a template -->
+  <nav class="nav">
+    <button class="pill nav-pill" data-go="pick">Home</button>
+    <button class="pill nav-pill" data-go="gallery-section">Photos</button>
+    <div class="timer" role="group" aria-label="Countdown timer">
+      <span>timer</span>
+      <button class="pill nav-pill tiny" data-timer="3">3s</button>
+      <button class="pill nav-pill tiny" data-timer="5">5s</button>
+      <button class="pill nav-pill tiny" data-timer="10">10s</button>
+    </div>
+  </nav>
+
+  <!-- 1. Start screen -->
   <section id="pick" class="screen active">
-    <header class="top">
-      <h1>Photobooth</h1>
-      <label class="btn small">
+    <header class="hero">
+      <svg class="star" viewBox="0 0 100 100" aria-hidden="true">
+        <polygon points="50.0,2.0 56.2,31.0 78.2,11.2 66.2,38.2 95.7,35.2 70.0,50.0 95.7,64.8 66.2,61.8 78.2,88.8 56.2,69.0 50.0,98.0 43.8,69.0 21.8,88.8 33.8,61.8 4.3,64.8 30.0,50.0 4.3,35.2 33.8,38.2 21.8,11.2 43.8,31.0"/>
+      </svg>
+      <p class="script">say cheese!</p>
+      <h1>PHOTOBOOTH</h1>
+      <p class="tagline">pick a template, strike a pose, keep the memories</p>
+    </header>
+
+    <main class="cream">
+      <div class="section-head">
+        <h2>CHOOSE A TEMPLATE</h2>
+        <p class="sub">tap one to start the countdown</p>
+      </div>
+      <div id="grid" class="grid"></div>
+      <label class="pill pink">
         + Add template
         <input id="upload" type="file" accept="image/png" multiple hidden>
       </label>
-    </header>
-    <div id="grid" class="grid"></div>
-    <p class="hint">Templates are PNGs with transparent gaps where the photos go.</p>
+      <p class="hint">Templates are PNGs with transparent gaps where the photos go.</p>
+
+      <div id="gallery-section" class="section-head">
+        <h2>YOUR PHOTOS</h2>
+        <p class="sub">everything you've taken on this device</p>
+      </div>
+      <div id="gallery" class="gallery"></div>
+      <p id="galleryEmpty" class="hint">Nothing yet. Go take some photos!</p>
+    </main>
   </section>
 
-  <!-- 2. Take photos -->
-  <section id="booth" class="screen">
-    <div id="frame" class="frame">
-      <video id="video" autoplay playsinline muted></video>
-      <div id="count" class="count"></div>
-      <div id="flash" class="flash"></div>
-    </div>
-    <p id="status" class="status"></p>
-    <div class="row">
-      <button id="backFromBooth" class="btn ghost">Back</button>
-      <button id="shoot" class="btn">Start</button>
+  <!-- 2. Taking photos -->
+  <section id="booth" class="screen cream">
+    <div class="booth-layout">
+      <div class="booth-main">
+        <div id="frame" class="frame">
+          <video id="video" autoplay playsinline muted></video>
+          <div id="count" class="count"></div>
+          <div id="flash" class="flash"></div>
+        </div>
+        <p id="status" class="sub"></p>
+        <div class="row">
+          <button id="backFromBooth" class="pill">Back</button>
+          <button id="retakeAll" class="pill" hidden>Retake all</button>
+          <button id="shoot" class="pill pink">Start</button>
+          <button id="print" class="pill pink" hidden>Print!</button>
+        </div>
+      </div>
+      <aside class="strip-wrap">
+        <p class="script small">your shots</p>
+        <div id="strip" class="strip"></div>
+      </aside>
     </div>
   </section>
 
   <!-- 3. Result -->
-  <section id="result" class="screen">
-    <img id="output" class="output" alt="Your photobooth picture">
-    <div class="row">
-      <button id="retake" class="btn ghost">Retake</button>
-      <button id="save" class="btn">Save</button>
+  <section id="result" class="screen cream">
+    <div class="section-head">
+      <h2 id="resultTitle">PRINTING...</h2>
+      <p id="resultSub" class="sub">hold tight</p>
     </div>
-    <button id="backFromResult" class="btn link">Choose another template</button>
+
+    <div id="printer" class="printer">
+      <div class="printer-body">
+        <span class="printer-light"></span>
+        <span class="printer-label">photo booth</span>
+        <div class="printer-slot"></div>
+      </div>
+      <div class="paper-wrap">
+        <img id="output" class="output" alt="Your photobooth picture">
+      </div>
+    </div>
+
+    <button id="save" class="pill pink collect">collect the photo!</button>
+    <div class="row">
+      <button id="retake" class="pill">Retake</button>
+      <button id="deletePhoto" class="pill">Delete</button>
+    </div>
+    <button id="backFromResult" class="link">back to start</button>
   </section>
 
   <script src="app.js"></script>
