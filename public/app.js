@@ -439,8 +439,7 @@ function showResult(blob, id, fresh, video) {
 }
 
 // ---------- Saving ----------
-// On iPhone/iPad (and Safari on Mac) this opens the share sheet, where you tap "Save Image".
-// Anywhere share isn't available, it downloads the file instead.
+// Downloads the file straight to the device (no share sheet).
 $('save').onclick = () => {
   const ext = OUTPUT_TYPE === 'image/png' ? 'png' : 'jpg';
   return saveFile(new File([resultBlob], `photobooth-${Date.now()}.${ext}`, { type: resultBlob.type }));
@@ -451,19 +450,15 @@ $('saveVideo').onclick = () => {
   return saveFile(new File([videoBlob], `photobooth-${Date.now()}.${ext}`, { type: videoBlob.type }));
 };
 
-async function saveFile(file) {
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file] });
-      return;
-    } catch (err) {
-      if (err.name === 'AbortError') return; // user closed the share sheet
-    }
-  }
+function saveFile(file) {
+  const url = URL.createObjectURL(file);
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(file);
+  a.href = url;
   a.download = file.name;
+  document.body.appendChild(a);
   a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 $('deletePhoto').onclick = async () => {
