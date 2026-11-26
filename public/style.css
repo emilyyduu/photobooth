@@ -69,6 +69,19 @@ h2 {
   font-size: clamp(1.9rem, 5vw, 3rem);
 }
 
+.instructions {
+  list-style: none;
+  counter-reset: step;
+  margin: 16px auto 0;
+  padding: 0;
+  max-width: 480px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--periwinkle);
+}
+.instructions li { counter-increment: step; margin: 4px 0; }
+.instructions li::before { content: counter(step) ". "; color: var(--coral); }
+
 /* ---------- Top bar ---------- */
 .nav {
   background: var(--periwinkle);
@@ -167,7 +180,7 @@ main.cream > h2 + .grid { margin-top: -4px; }
 }
 .card {
   position: relative;
-  width: 180px;
+  width: 260px;
   background: var(--ice);
   border: var(--border) solid var(--periwinkle);
   border-radius: var(--radius);
@@ -180,7 +193,7 @@ main.cream > h2 + .grid { margin-top: -4px; }
 .card:active { transform: translateY(0); box-shadow: none; }
 .card img {
   width: 100%;
-  height: 190px;
+  height: 300px;
   object-fit: contain;
   border-radius: 12px;
   background: repeating-conic-gradient(#fff 0 25%, #eef2fb 0 50%) 0 0 / 14px 14px;
