@@ -23,6 +23,9 @@
   --ice: #dde6f7;
   --coral: #ec775c;
   --blush: #f9cbc0;
+  --mint: #d3efdb;       /* light green */
+  --green: #8cc7a1;
+  --green-dark: #4f8a67;
 
   --heading: "Oskon", Georgia, serif;
   --body: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
@@ -88,20 +91,27 @@ h2 {
   font-weight: 600;
   line-height: 1.4;
   color: var(--periwinkle-dark);
-  background: var(--ice);
-  border: var(--border) solid var(--periwinkle);
+  background: var(--mint);
+  border: var(--border) solid var(--green);
   border-radius: var(--radius);
 }
 .instructions li { counter-increment: step; margin: 6px 0; }
 .instructions li::before { content: counter(step) ". "; color: var(--coral); font-weight: 800; }
 
-/* "emily's" above the title */
+/* Title block: "emily's" lines up with the left edge of the P */
+.title {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
 .eyebrow {
-  font-family: var(--heading);
-  font-size: clamp(1.6rem, 5vw, 2.6rem);
+  font-family: var(--body);
+  font-weight: 700;
+  font-size: clamp(1.1rem, 3.5vw, 1.8rem);
   line-height: 1;
+  letter-spacing: 0.02em;
   color: var(--periwinkle-dark);
-  margin-bottom: -6px;
 }
 
 /* ---------- Top bar ---------- */
@@ -211,7 +221,7 @@ main.cream > h2 + .grid { margin-top: -4px; }
   text-align: center;
   transition: transform 0.15s, box-shadow 0.15s;
 }
-.card:hover { transform: translateY(-3px); box-shadow: 0 6px 0 var(--yellow); }
+.card:hover { transform: translateY(-3px); box-shadow: 0 6px 0 var(--green); }
 .card:active { transform: translateY(0); box-shadow: none; }
 .card img {
   display: block;
@@ -256,16 +266,18 @@ main.cream > h2 + .grid { margin-top: -4px; }
 .gallery {
   width: 100%;
   max-width: 1400px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 280px));
+  display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  gap: 20px;
+  align-items: flex-start;
+  gap: 12px;
 }
 .gallery img {
+  flex: 0 0 auto;
   display: block;
-  width: 100%;
-  aspect-ratio: 3 / 4;
-  object-fit: contain;
+  height: clamp(240px, 38vw, 340px); /* each photo keeps its own width, so no empty space around it */
+  width: auto;
+  max-width: 100%;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.22));
   cursor: pointer;
   transition: transform 0.15s;
@@ -374,9 +386,6 @@ main.cream > h2 + .grid { margin-top: -4px; }
 
 /* Portrait phones: strip moves under the camera and runs sideways */
 @media (max-width: 700px) {
-  .card { width: calc(50% - 8px); }
-  .gallery img { height: 170px; }
-  .gallery { align-items: flex-start; }
   .booth-layout { flex-direction: column; align-items: center; }
   .strip { width: 100%; flex-direction: row; overflow-x: auto; }
   .shot { flex: 0 0 72px; width: 72px; }
