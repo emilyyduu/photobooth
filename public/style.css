@@ -61,6 +61,7 @@ h1, h2 {
   letter-spacing: 0.01em;
 }
 h1 {
+  text-wrap: balance;
   color: var(--coral);
   font-size: clamp(3rem, 11vw, 7rem);
 }
@@ -79,11 +80,11 @@ h2 {
   list-style: none;
   counter-reset: step;
   margin: 0;
-  padding: 18px 24px;
-  max-width: 520px;
+  padding: clamp(14px, 4vw, 20px) clamp(16px, 5vw, 28px);
+  max-width: 560px;
   width: 100%;
   text-align: left;
-  font-size: 1.05rem;
+  font-size: clamp(0.95rem, 2.8vw, 1.1rem);
   font-weight: 600;
   line-height: 1.4;
   color: var(--periwinkle-dark);
@@ -93,6 +94,15 @@ h2 {
 }
 .instructions li { counter-increment: step; margin: 6px 0; }
 .instructions li::before { content: counter(step) ". "; color: var(--coral); font-weight: 800; }
+
+/* "emily's" above the title */
+.eyebrow {
+  font-family: var(--heading);
+  font-size: clamp(1.6rem, 5vw, 2.6rem);
+  line-height: 1;
+  color: var(--periwinkle-dark);
+  margin-bottom: -6px;
+}
 
 /* ---------- Top bar ---------- */
 .nav[hidden] { display: none; }
@@ -187,7 +197,8 @@ main.cream > h2 + .grid { margin-top: -4px; }
   width: 100%;
   max-width: 1400px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 280px));
+  justify-content: center;
   gap: 20px;
 }
 .card {
@@ -246,7 +257,8 @@ main.cream > h2 + .grid { margin-top: -4px; }
   width: 100%;
   max-width: 1400px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 280px));
+  justify-content: center;
   gap: 20px;
 }
 .gallery img {
