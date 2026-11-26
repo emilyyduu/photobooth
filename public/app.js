@@ -13,6 +13,9 @@ let stream = null;
 let resultBlob = null;
 let viewingId = null; // id of the gallery photo on the result screen
 let busy = false;
+let recorder = null;
+let recording = null; // promise that resolves to the finished video Blob (or null)
+let videoBlob = null; // video for the photo on the result screen
 
 const $ = (id) => document.getElementById(id);
 const video = $('video');
@@ -125,7 +128,7 @@ async function renderGallery() {
     const img = document.createElement('img');
     img.src = URL.createObjectURL(p.blob);
     img.alt = 'Saved photo';
-    img.onclick = () => showResult(p.blob, p.id, false);
+    img.onclick = () => showResult(p.blob, p.id, false, p.video);
     gallery.appendChild(img);
   }
 }
@@ -206,7 +209,37 @@ async function startCamera() {
   await video.play();
 }
 
+// ---------- Video recording ----------
+// Records the camera (no audio, not mirrored) from Start until the last photo is taken.
+function startRecording() {
+  recorder = null;
+  recording = null;
+  if (!stream || typeof MediaRecorder === 'undefined') return;
+  const type = ['video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
+    .find((t) => MediaRecorder.isTypeSupported(t));
+  try {
+    const rec = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+    const chunks = [];
+    rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+    recording = new Promise((resolve) => {
+      rec.onstop = () => resolve(chunks.length ? new Blob(chunks, { type: rec.mimeType || type || 'video/webm' }) : null);
+      rec.onerror = () => resolve(null);
+    });
+    rec.start();
+    recorder = rec;
+  } catch (e) {
+    recorder = null;
+    recording = null;
+  }
+}
+
+function stopRecording() {
+  if (recorder && recorder.state !== 'inactive') recorder.stop();
+  recorder = null;
+}
+
 function stopCamera() {
+  stopRecording();
   if (stream) stream.getTracks().forEach((t) => t.stop());
   stream = null;
 }
@@ -214,6 +247,7 @@ function stopCamera() {
 async function startBooth(t) {
   current = t;
   shots = [];
+  recording = null;
   show('booth');
   setPreviewShape(0);
   renderStrip();
@@ -300,7 +334,9 @@ $('shoot').onclick = async () => {
   setPhase('shooting');
   shots = [];
   renderStrip();
+  startRecording();
   for (let i = 0; i < current.slots.length; i++) await takeShot(i);
+  stopRecording();
   busy = false;
   setPhase('review');
 };
@@ -357,14 +393,17 @@ async function makeResult() {
 
   const blob = await new Promise((r) => c.toBlob(r, OUTPUT_TYPE, OUTPUT_QUALITY));
   const id = 'photo-' + Date.now();
-  await dbPut('photos', { id, blob, created: Date.now() }); // keep a copy in the gallery
   stopCamera();
-  showResult(blob, id, true);
+  const video = recording ? await recording : null;
+  await dbPut('photos', { id, blob, video, created: Date.now() }); // keep a copy in the gallery
+  showResult(blob, id, true, video);
 }
 
 // fresh = just taken, so play the printing animation
-function showResult(blob, id, fresh) {
+function showResult(blob, id, fresh, video) {
   resultBlob = blob;
+  videoBlob = video || null;
+  $('saveVideo').hidden = !videoBlob;
   viewingId = id;
   const out = $('output');
   const printer = $('printer');
@@ -401,10 +440,17 @@ function showResult(blob, id, fresh) {
 // ---------- Saving ----------
 // On iPhone/iPad (and Safari on Mac) this opens the share sheet, where you tap "Save Image".
 // Anywhere share isn't available, it downloads the file instead.
-$('save').onclick = async () => {
+$('save').onclick = () => {
   const ext = OUTPUT_TYPE === 'image/png' ? 'png' : 'jpg';
-  const file = new File([resultBlob], `photobooth-${Date.now()}.${ext}`, { type: resultBlob.type });
+  return saveFile(new File([resultBlob], `photobooth-${Date.now()}.${ext}`, { type: resultBlob.type }));
+};
 
+$('saveVideo').onclick = () => {
+  const ext = videoBlob.type.includes('mp4') ? 'mp4' : 'webm';
+  return saveFile(new File([videoBlob], `photobooth-${Date.now()}.${ext}`, { type: videoBlob.type }));
+};
+
+async function saveFile(file) {
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
       await navigator.share({ files: [file] });
@@ -417,7 +463,7 @@ $('save').onclick = async () => {
   a.href = URL.createObjectURL(file);
   a.download = file.name;
   a.click();
-};
+}
 
 $('deletePhoto').onclick = async () => {
   if (!confirm('Delete this photo?')) return;
