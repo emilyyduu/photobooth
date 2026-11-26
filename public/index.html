@@ -7,11 +7,11 @@
   <meta name="theme-color" content="#7b8fbb">
   <title>Photobooth</title>
   <!-- ?v= forces browsers to load the new file after an update. Bump the number each time. -->
-  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 
-  <nav class="nav">
+  <nav class="nav" id="nav" hidden>
     <div class="timer" role="group" aria-label="Timer">
       <span>Timer</span>
       <button class="pill nav-pill" data-timer="3">3s</button>
@@ -24,14 +24,17 @@
   <section id="pick" class="screen active">
     <header class="hero">
       <h1>PHOTOBOOTH</h1>
+    </header>
+
+    <div class="how-to">
       <ol class="instructions">
         <li>Click on a template!</li>
-        <li>Change the timer if you want at the top.</li>
+        <li>Change the timer if you want at the top of the next screen.</li>
         <li>Press start the timer.</li>
         <li>Pose!</li>
         <li>Collect your photobooth strip (make sure to Add to photos!)</li>
       </ol>
-    </header>
+    </div>
 
     <main class="cream">
       <h2>Templates</h2>
@@ -91,6 +94,6 @@
     </div>
   </section>
 
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>

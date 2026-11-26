@@ -25,6 +25,7 @@ if (MIRROR) video.classList.add('mirror');
 function show(id) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
   $(id).classList.add('active');
+  $('nav').hidden = id !== 'booth'; // timer only matters once a template is picked
   window.scrollTo(0, 0);
 }
 
