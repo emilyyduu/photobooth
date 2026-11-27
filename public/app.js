@@ -467,6 +467,22 @@ $('deletePhoto').onclick = async () => {
   goHome();
 };
 
+// ---------- Full screen ----------
+const fsBtn = $('fullscreen');
+const fsRoot = document.documentElement;
+const fsSupported = !!(fsRoot.requestFullscreen || fsRoot.webkitRequestFullscreen);
+const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement;
+function renderFullscreen() { fsBtn.textContent = fsElement() ? 'Exit full screen' : 'Full screen'; }
+if (fsSupported) {
+  fsBtn.hidden = false;
+  fsBtn.onclick = () => {
+    if (fsElement()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    else (fsRoot.requestFullscreen || fsRoot.webkitRequestFullscreen).call(fsRoot);
+  };
+  document.addEventListener('fullscreenchange', renderFullscreen);
+  document.addEventListener('webkitfullscreenchange', renderFullscreen);
+}
+
 // ---------- Navigation ----------
 $('retake').onclick = () => startBooth(current);
 $('backFromBooth').onclick = goHome;
